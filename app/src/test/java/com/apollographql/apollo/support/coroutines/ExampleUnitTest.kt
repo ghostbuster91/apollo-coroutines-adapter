@@ -4,7 +4,7 @@ import com.apollographql.apollo.ApolloClient
 import com.apollographql.apollo.api.Input
 import com.apollographql.apollo.support.coroutines.type.Episode
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.experimental.DefaultDispatcher
+import kotlinx.coroutines.experimental.Unconfined
 import kotlinx.coroutines.experimental.async
 import kotlinx.coroutines.experimental.cancelAndJoin
 import kotlinx.coroutines.experimental.runBlocking
@@ -51,11 +51,11 @@ class CoroutinesSupportTest {
     }
 
     @Test
-    fun callIsCanceledWhenCancellingCoroutine() = runBlocking {
+    fun callIsCanceledWhenCancellingCoroutine() = runBlocking(Unconfined) {
         val query = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
 
-        val call = async(context = DefaultDispatcher) { query.await() }
+        val call = async { query.await() }
         call.cancelAndJoin()
 
         assertThat(query.isCanceled).isTrue()
@@ -71,6 +71,17 @@ class CoroutinesSupportTest {
         call.join()
         assertThat(call.isCompleted).isTrue()
         assertThat(server.takeRequest().method).isEqualTo("POST")
+    }
+
+    @Test
+    fun prefetchIsCanceledWhenDisposed() = runBlocking(context = Unconfined) {
+        val prefetch = apolloClient.prefetch(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+
+        val disposable = async { prefetch.await() }
+        disposable.cancelAndJoin()
+
+        assertThat(prefetch.isCanceled).isTrue()
     }
 }
 

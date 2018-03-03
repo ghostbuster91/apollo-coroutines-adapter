@@ -35,7 +35,12 @@ private inline fun <T> CancellableContinuation<T>.tryToResume(function: () -> T)
 }
 
 suspend fun ApolloPrefetch.await(): Unit = suspendCancellableCoroutine { continuation ->
-    continuation.invokeOnCompletion { if (continuation.isCancelled) cancel() }
+    continuation.invokeOnCompletion {
+        if (continuation.isCancelled) {
+            println("Canceling")
+            cancel()
+        }
+    }
 
     val callback = object : ApolloPrefetch.Callback() {
         override fun onSuccess() {
