@@ -4,6 +4,9 @@ import com.apollographql.apollo.ApolloClient
 import com.apollographql.apollo.api.Input
 import com.apollographql.apollo.support.coroutines.type.Episode
 import com.google.common.truth.Truth.assertThat
+import kotlinx.coroutines.experimental.DefaultDispatcher
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.cancelAndJoin
 import kotlinx.coroutines.experimental.runBlocking
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
@@ -22,7 +25,7 @@ class CoroutinesSupportTest {
 
     @JvmField
     @Rule
-    val rule = MockWebServer()
+    val server = MockWebServer()
     private lateinit var apolloClient: ApolloClient
 
     @Before
@@ -32,7 +35,7 @@ class CoroutinesSupportTest {
                 .build()
 
         apolloClient = ApolloClient.builder()
-                .serverUrl(rule.url("/"))
+                .serverUrl(server.url("/"))
                 .dispatcher(currentThreadExecutorService())
                 .okHttpClient(okHttpClient)
                 .build()
@@ -42,9 +45,20 @@ class CoroutinesSupportTest {
 
     @Test
     fun callProducesValue() = runBlocking {
-        rule.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
         val response = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).await()
         assertThat(response.hero?.name).isEqualTo("R2-D2")
+    }
+
+    @Test
+    fun callIsCanceledWhenCancellingCoroutine() = runBlocking {
+        val query = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+
+        val call = async(context = DefaultDispatcher) { query.await() }
+        call.cancelAndJoin()
+
+        assertThat(query.isCanceled).isTrue()
     }
 }
 
