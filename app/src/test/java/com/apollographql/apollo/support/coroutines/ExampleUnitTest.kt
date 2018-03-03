@@ -60,6 +60,18 @@ class CoroutinesSupportTest {
 
         assertThat(query.isCanceled).isTrue()
     }
+
+    @Test
+    fun prefetchCompletes() = runBlocking {
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+
+        val prefetch = apolloClient.prefetch(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
+        val call = async { prefetch.await() }
+
+        call.join()
+        assertThat(call.isCompleted).isTrue()
+        assertThat(server.takeRequest().method).isEqualTo("POST")
+    }
 }
 
 private fun mockResponse(fileName: String): MockResponse {

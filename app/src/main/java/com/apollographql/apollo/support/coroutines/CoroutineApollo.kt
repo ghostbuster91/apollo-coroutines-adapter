@@ -1,23 +1,24 @@
 package com.apollographql.apollo.support.coroutines
 
 import com.apollographql.apollo.ApolloCall
+import com.apollographql.apollo.ApolloPrefetch
 import com.apollographql.apollo.api.Response
 import com.apollographql.apollo.exception.ApolloException
 import kotlinx.coroutines.experimental.CancellableContinuation
 import kotlinx.coroutines.experimental.suspendCancellableCoroutine
 
-suspend fun <T> ApolloCall<T>.await() : T  = suspendCancellableCoroutine {  continuation ->
+suspend fun <T> ApolloCall<T>.await(): T = suspendCancellableCoroutine { continuation ->
     continuation.invokeOnCompletion { if (continuation.isCancelled) cancel() }
 
     val callback = object : ApolloCall.Callback<T>() {
         override fun onFailure(e: ApolloException) {
-            if(continuation.isActive) {
+            if (continuation.isActive) {
                 continuation.resumeWithException(e)
             }
         }
 
         override fun onResponse(response: Response<T>) {
-            if(continuation.isActive) {
+            if (continuation.isActive) {
                 continuation.tryToResume { response.data()!! }
             }
         }
@@ -31,4 +32,23 @@ private inline fun <T> CancellableContinuation<T>.tryToResume(function: () -> T)
     } catch (exception: Throwable) {
         resumeWithException(exception)
     }
+}
+
+suspend fun ApolloPrefetch.await(): Unit = suspendCancellableCoroutine { continuation ->
+    continuation.invokeOnCompletion { if (continuation.isCancelled) cancel() }
+
+    val callback = object : ApolloPrefetch.Callback() {
+        override fun onSuccess() {
+            if (continuation.isActive) {
+                continuation.resume(Unit)
+            }
+        }
+
+        override fun onFailure(e: ApolloException) {
+            if (continuation.isActive) {
+                continuation.resumeWithException(e)
+            }
+        }
+    }
+    enqueue(callback)
 }
