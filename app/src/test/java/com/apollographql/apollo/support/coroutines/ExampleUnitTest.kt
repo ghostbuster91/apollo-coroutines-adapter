@@ -149,6 +149,24 @@ class CoroutinesSupportTest {
         assertThat(results.size).isEqualTo(2)
         assertThat(results.map { it.hero!!.name }).containsExactly("R2-D2", "Artoo").inOrder()
     }
+
+    @Test
+    fun queryWatcherNotCalledWhenCanceled() = runBlocking<Unit> {
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+        val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
+        val results = mutableListOf<EpisodeHeroNameQuery.Data>()
+        val channel = queryWatcher.await(coroutineContext)
+        val job = launch {
+            channel.consumeEach { results.add(it) }
+        }
+        channel.close()
+        server.enqueue(mockResponse("HeroAndFriendsNameWithIdsNameChange.json"))
+        apolloClient.query(HeroAndFriendsNamesWithIDsQuery(Input.fromNullable(Episode.NEWHOPE))).enqueue(null)
+
+        job.join()
+        assertThat(results.size).isEqualTo(1)
+        assertThat(results.map { it.hero!!.name }).containsExactly("R2-D2")
+    }
 }
 
 
