@@ -90,7 +90,8 @@ class CoroutinesSupportTest {
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
 
         val disposable = async { prefetch.await() }
-        disposable.cancelAndJoin()
+        disposable.cancel()
+        disposable.join()
 
         assertThat(prefetch.isCanceled).isTrue()
     }
@@ -114,6 +115,27 @@ class CoroutinesSupportTest {
         job.join()
         assertThat(results.size).isEqualTo(2)
         assertThat(results.map { it.hero!!.name }).containsExactly("R2-D2", "Artoo").inOrder()
+    }
+
+    @Test
+    fun queryWatcherNotUpdatedSameQuerySameResults() = runBlocking<Unit> {
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+
+        val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
+
+        val results = mutableListOf<EpisodeHeroNameQuery.Data>()
+        val channel = queryWatcher.await(coroutineContext)
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+        apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
+                .responseFetcher(ApolloResponseFetchers.NETWORK_ONLY)
+                .enqueue(null)
+        val job = launch {
+            channel.consumeEach { results.add(it) }
+        }
+        channel.close()
+        job.join()
+        assertThat(results.size).isEqualTo(1)
+        assertThat(results.map { it.hero!!.name }).containsExactly("R2-D2")
     }
 }
 
