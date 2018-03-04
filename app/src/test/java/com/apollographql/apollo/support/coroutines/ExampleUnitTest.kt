@@ -77,13 +77,12 @@ class CoroutinesSupportTest {
     }
 
     @Test
-    fun prefetchIsCanceledWhenDisposed() = runBlocking(context = Unconfined) {
+    fun prefetchIsCanceledWhenDisposed() = runBlocking {
         val prefetch = apolloClient.prefetch(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
 
-        val disposable = async { prefetch.await() }
-        disposable.cancel()
-        disposable.join()
+        val job = async { prefetch.await() }
+        job.cancelAndJoin()
 
         assertThat(prefetch.isCanceled).isTrue()
     }
