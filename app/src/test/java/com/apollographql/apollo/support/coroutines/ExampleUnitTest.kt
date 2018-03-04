@@ -4,11 +4,15 @@ import com.apollographql.apollo.ApolloClient
 import com.apollographql.apollo.api.Input
 import com.apollographql.apollo.cache.normalized.lru.EvictionPolicy
 import com.apollographql.apollo.cache.normalized.lru.LruNormalizedCacheFactory
+import com.apollographql.apollo.exception.ApolloHttpException
 import com.apollographql.apollo.fetcher.ApolloResponseFetchers
 import com.apollographql.apollo.support.coroutines.type.Episode
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.async
+import kotlinx.coroutines.experimental.cancelAndJoin
 import kotlinx.coroutines.experimental.channels.consumeEach
+import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.experimental.runBlocking
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -53,8 +57,14 @@ class CoroutinesSupportTest {
         assertThat(response.hero?.name).isEqualTo("R2-D2")
     }
 
+    @Test(expected = ApolloHttpException::class)
+    fun callProducesError() = runBlocking<Unit> {
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID).setResponseCode(401))
+        apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).await()
+    }
+
     @Test
-    fun callIsCanceledWhenCancellingCoroutine() = runBlocking(Unconfined) {
+    fun callIsCanceledWhenCancellingCoroutine() = runBlocking<Unit> {
         val query = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
 
@@ -65,7 +75,7 @@ class CoroutinesSupportTest {
     }
 
     @Test
-    fun prefetchCompletes() = runBlocking {
+    fun prefetchCompletes() = runBlocking<Unit> {
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
 
         val prefetch = apolloClient.prefetch(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
@@ -76,8 +86,14 @@ class CoroutinesSupportTest {
         assertThat(server.takeRequest().method).isEqualTo("POST")
     }
 
+    @Test(expected = ApolloHttpException::class)
+    fun prefetchFails() = runBlocking<Unit> {
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID).setResponseCode(401))
+        apolloClient.prefetch(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).await()
+    }
+
     @Test
-    fun prefetchIsCanceledWhenDisposed() = runBlocking {
+    fun prefetchIsCanceledWhenDisposed() = runBlocking<Unit> {
         val prefetch = apolloClient.prefetch(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
 
@@ -88,7 +104,7 @@ class CoroutinesSupportTest {
     }
 
     @Test
-    fun queryWatcherUpdatedSameQueryDifferentResults() = runBlocking {
+    fun queryWatcherUpdatedSameQueryDifferentResults() = runBlocking<Unit> {
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
 
         val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
@@ -165,6 +181,14 @@ class CoroutinesSupportTest {
         job.join()
         assertThat(results.size).isEqualTo(1)
         assertThat(results.map { it.hero!!.name }).containsExactly("R2-D2")
+    }
+
+    @Test(expected = ApolloHttpException::class)
+    fun queryWatcherFails() = runBlocking<Unit> {
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID).setResponseCode(401))
+        val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
+        val channel = queryWatcher.await(coroutineContext)
+        channel.consumeEach { println(it) }
     }
 }
 
