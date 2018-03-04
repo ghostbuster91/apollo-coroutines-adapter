@@ -1,13 +1,21 @@
 package com.apollographql.apollo.support.coroutines
 
+import com.apollographql.apollo.ApolloCall
 import com.apollographql.apollo.ApolloClient
+import com.apollographql.apollo.ApolloQueryWatcher
 import com.apollographql.apollo.api.Input
+import com.apollographql.apollo.api.Response
+import com.apollographql.apollo.cache.normalized.lru.EvictionPolicy
+import com.apollographql.apollo.cache.normalized.lru.LruNormalizedCacheFactory
+import com.apollographql.apollo.exception.ApolloException
+import com.apollographql.apollo.fetcher.ApolloResponseFetchers
 import com.apollographql.apollo.support.coroutines.type.Episode
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.experimental.Unconfined
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.cancelAndJoin
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.experimental.*
+import kotlinx.coroutines.experimental.channels.Channel
+import kotlinx.coroutines.experimental.channels.consumeEach
+import kotlinx.coroutines.experimental.channels.produce
+import kotlinx.coroutines.experimental.channels.take
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -20,6 +28,7 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.SynchronousQueue
 import java.util.concurrent.ThreadPoolExecutor
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.experimental.CoroutineContext
 
 class CoroutinesSupportTest {
 
@@ -38,10 +47,12 @@ class CoroutinesSupportTest {
                 .serverUrl(server.url("/"))
                 .dispatcher(currentThreadExecutorService())
                 .okHttpClient(okHttpClient)
+                .normalizedCache(LruNormalizedCacheFactory(EvictionPolicy.NO_EVICTION), IdFieldCacheKeyResolver())
                 .build()
     }
 
     private val FILE_EPISODE_HERO_NAME_WITH_ID = "EpisodeHeroNameResponseWithId.json"
+    private val FILE_EPISODE_HERO_NAME_CHANGE = "EpisodeHeroNameResponseNameChange.json"
 
     @Test
     fun callProducesValue() = runBlocking {
@@ -83,7 +94,29 @@ class CoroutinesSupportTest {
 
         assertThat(prefetch.isCanceled).isTrue()
     }
+
+    @Test
+    fun queryWatcherUpdatedSameQueryDifferentResults() = runBlocking {
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+
+        val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
+
+        val results = mutableListOf<EpisodeHeroNameQuery.Data>()
+        val channel = queryWatcher.await(coroutineContext)
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_CHANGE))
+        apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
+                .responseFetcher(ApolloResponseFetchers.NETWORK_ONLY)
+                .enqueue(null)
+        val job = launch {
+            channel.consumeEach { results.add(it) }
+        }
+        channel.close()
+        job.join()
+        assertThat(results.size).isEqualTo(2)
+        assertThat(results.map { it.hero!!.name }).containsExactly("R2-D2", "Artoo").inOrder()
+    }
 }
+
 
 private fun mockResponse(fileName: String): MockResponse {
     return MockResponse().setChunkedBody(readJson(fileName), 32)
