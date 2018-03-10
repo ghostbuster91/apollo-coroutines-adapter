@@ -8,11 +8,8 @@ import com.apollographql.apollo.exception.ApolloHttpException
 import com.apollographql.apollo.fetcher.ApolloResponseFetchers
 import com.apollographql.apollo.support.coroutines.type.Episode
 import com.google.common.truth.Truth.assertThat
-import kotlinx.coroutines.experimental.async
-import kotlinx.coroutines.experimental.cancelAndJoin
+import kotlinx.coroutines.experimental.*
 import kotlinx.coroutines.experimental.channels.consumeEach
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
 import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -66,9 +63,9 @@ class CoroutinesSupportTest {
     @Test
     fun callIsCanceledWhenCancellingCoroutine() = runBlocking<Unit> {
         val query = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
-        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID).setBodyDelay(1,TimeUnit.MILLISECONDS))
 
-        val call = async { query.await() }
+        val call = async(start = CoroutineStart.ATOMIC) { query.await() }
         call.cancelAndJoin()
 
         assertThat(query.isCanceled).isTrue()
@@ -95,9 +92,9 @@ class CoroutinesSupportTest {
     @Test
     fun prefetchIsCanceledWhenDisposed() = runBlocking<Unit> {
         val prefetch = apolloClient.prefetch(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
-        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
+        server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID).setBodyDelay(1,TimeUnit.MILLISECONDS))
 
-        val job = async { prefetch.await() }
+        val job = async(start = CoroutineStart.ATOMIC) { prefetch.await() }
         job.cancelAndJoin()
 
         assertThat(prefetch.isCanceled).isTrue()
