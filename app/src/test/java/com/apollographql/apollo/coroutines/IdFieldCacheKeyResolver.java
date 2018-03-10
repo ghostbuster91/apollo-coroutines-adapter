@@ -1,4 +1,4 @@
-package com.apollographql.apollo.support.coroutines;
+package com.apollographql.apollo.coroutines;
 
 import com.apollographql.apollo.api.Operation;
 import com.apollographql.apollo.api.ResponseField;
