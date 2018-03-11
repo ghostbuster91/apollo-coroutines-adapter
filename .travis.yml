@@ -1,0 +1,29 @@
+language: android
+
+android:
+  components:
+    - tools
+    - platform-tools
+    - build-tools-25.0.2
+    - android-26
+    - android-22
+    - extra-android-m2repository
+    - sys-img-armeabi-v7a-android-22
+
+licenses:
+  - 'android-sdk-license-.+'
+  - 'android-sdk-preview-.+'
+  - '.*'
+
+jdk:
+  - oraclejdk8
+
+sudo: true
+
+script:
+  - ./gradlew testDebug
+
+cache:
+  directories:
+    - $HOME/.m2
+    - $HOME/.gradle
