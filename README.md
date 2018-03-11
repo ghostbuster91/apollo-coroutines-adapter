@@ -15,7 +15,7 @@ repositories {
 }
 
 dependencies {
-        compile 'com.github.ghostbuster91:apollo-coroutines-adapter:master-SNAPSHOT'
+    compile 'com.github.ghostbuster91:apollo-coroutines-adapter:master-SNAPSHOT'
 }
 ```
 
