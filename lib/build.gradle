@@ -2,6 +2,7 @@ apply plugin: 'com.android.library'
 apply plugin: 'com.apollographql.android'
 apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
+apply plugin: 'com.github.dcendents.android-maven'
 
 buildscript {
     repositories {
@@ -9,8 +10,11 @@ buildscript {
     }
     dependencies {
         classpath 'com.apollographql.apollo:apollo-gradle-plugin:0.4.4'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:2.0'
     }
 }
+
+group='com.github.ghostbuster91'
 
 android {
     compileSdkVersion 26
