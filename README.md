@@ -63,8 +63,6 @@ for(heroName : apolloWatcher.await()) {
 
 Remember to cancel all your jobs which operate on UI not later then in onDestroy:
 
-Disposable disposable = Rx2Apollo.from(query).subscribe();
-
 ```
 job = launch(UI) {
     val result = apolloCall().await()
