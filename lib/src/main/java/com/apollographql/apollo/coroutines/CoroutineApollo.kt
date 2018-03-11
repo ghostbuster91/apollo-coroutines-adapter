@@ -8,7 +8,6 @@ import com.apollographql.apollo.exception.ApolloException
 import kotlinx.coroutines.experimental.CancellableContinuation
 import kotlinx.coroutines.experimental.channels.Channel
 import kotlinx.coroutines.experimental.suspendCancellableCoroutine
-import kotlin.coroutines.experimental.CoroutineContext
 
 suspend fun <T> ApolloCall<T>.await(): T = suspendCancellableCoroutine { continuation ->
     continuation.invokeOnCompletion { if (continuation.isCancelled) cancel() }
@@ -60,7 +59,7 @@ suspend fun ApolloPrefetch.await(): Unit = suspendCancellableCoroutine { continu
     enqueue(callback)
 }
 
-suspend fun <T> ApolloQueryWatcher<T>.await(coroutineContext: CoroutineContext): Channel<T> {
+suspend fun <T> ApolloQueryWatcher<T>.await(): Channel<T> {
     val channel = Channel<T>(Channel.UNLIMITED)
     val callback = object : ApolloCall.Callback<T>() {
         override fun onResponse(response: Response<T>) {

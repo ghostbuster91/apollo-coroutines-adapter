@@ -107,7 +107,7 @@ class CoroutinesSupportTest {
         val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
 
         val results = mutableListOf<EpisodeHeroNameQuery.Data>()
-        val channel = queryWatcher.await(coroutineContext)
+        val channel = queryWatcher.await()
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_CHANGE))
         apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
                 .responseFetcher(ApolloResponseFetchers.NETWORK_ONLY)
@@ -128,7 +128,7 @@ class CoroutinesSupportTest {
         val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
 
         val results = mutableListOf<EpisodeHeroNameQuery.Data>()
-        val channel = queryWatcher.await(coroutineContext)
+        val channel = queryWatcher.await()
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
         apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE)))
                 .responseFetcher(ApolloResponseFetchers.NETWORK_ONLY)
@@ -149,7 +149,7 @@ class CoroutinesSupportTest {
         val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
 
         val results = mutableListOf<EpisodeHeroNameQuery.Data>()
-        val channel = queryWatcher.await(coroutineContext)
+        val channel = queryWatcher.await()
         server.enqueue(mockResponse("HeroAndFriendsNameWithIdsNameChange.json"))
         apolloClient.query(HeroAndFriendsNamesWithIDsQuery(Input.fromNullable(Episode.NEWHOPE))).enqueue(null)
 
@@ -167,7 +167,7 @@ class CoroutinesSupportTest {
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID))
         val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
         val results = mutableListOf<EpisodeHeroNameQuery.Data>()
-        val channel = queryWatcher.await(coroutineContext)
+        val channel = queryWatcher.await()
         val job = launch {
             channel.consumeEach { results.add(it) }
         }
@@ -184,7 +184,7 @@ class CoroutinesSupportTest {
     fun queryWatcherFails() = runBlocking<Unit> {
         server.enqueue(mockResponse(FILE_EPISODE_HERO_NAME_WITH_ID).setResponseCode(401))
         val queryWatcher = apolloClient.query(EpisodeHeroNameQuery(Input.fromNullable(Episode.EMPIRE))).watcher()
-        val channel = queryWatcher.await(coroutineContext)
+        val channel = queryWatcher.await()
         channel.consumeEach { println(it) }
     }
 }
