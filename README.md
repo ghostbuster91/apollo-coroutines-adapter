@@ -1,10 +1,23 @@
 # Apollo GraphQL Coroutines Adapter
 
 [![Build Status](https://travis-ci.org/ghostbuster91/apollo-coroutines-adapter.svg?branch=master)](https://travis-ci.org/ghostbuster91/apollo-coroutines-adapter)
+[![JitPack](https://jitpack.io/v/ghostbuster91/apollo-coroutines-adapter.svg)](https://jitpack.io/#ghostbuster91/apollo-coroutines-adapter)
 
 An adapter for Apollo GraphQL client which adds support for kotlin coroutines.
 Apollo types such as ApolloCall, ApolloPrefetch & ApolloWatcher can be converted to their 
 corresponding suspending functions and channels by using extension functions provided in CoroutineApollo file respectively.
+
+## Download
+
+```
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+        compile 'com.github.ghostbuster91:apollo-coroutines-adapter:master-SNAPSHOT'
+}
+```
 
 ## Usage
 Converting ApolloCall to a suspending function:
